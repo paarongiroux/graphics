@@ -1,0 +1,30 @@
+<html>
+    <head>
+        <title>02: Raytracing with Lighting</title>
+    </head>
+    <body>
+        <h3>02: Raytracing with Lighting</h1>
+        <div>
+            <canvas id="myCanvas" width="600" height="600" style="border:1px solid #000000;"></canvas>
+        </div>
+        <div>
+            <button onclick="renderScene()">Render Scene</button>
+        </div>
+        <div>
+            <form>
+                <p>Surface Properties:</p>
+                <input type="radio" id="matte" name ="surface" value="matte" checked="true">
+                <label for="matte">Matte</label><br>
+                <input type="radio" id="shiny" name ="surface" value="shiny">
+                <label for="shiny">Shiny</label><br>
+            </form>
+            <p>Ambient Light Intensity</p>
+            <input type="range" id="amb" min="1" max="100" value="20">
+            <p>Point Light Intensity</p>
+            <input type="range" id="point" min="1" max="100" value="60">
+            <p>Directional Light Intensity</p>
+            <input type="range" id="dir" min="1" max="100" value="20">
+        </div>
+        <script type="text/javascript" src="script02.js"></script>
+    </body>
+</html>
