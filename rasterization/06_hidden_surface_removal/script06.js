@@ -133,16 +133,29 @@ let cubeTriangles = [
     [4, 1, 0, purple],
     [2, 6, 7, cyan],
     [2, 7, 3, cyan]
-]
+];
+
+let triangleVertices = [
+    [1, 1, 1],
+    [-1, 1, 1],
+    [-1, -1, 1]
+];
+
+let triangleTriangles = [
+    [0,1,2, red]
+];
 
 
 let cubeModel = new Model(cubeVertices, cubeTriangles);
+let triangleModel = new Model(triangleVertices, triangleTriangles);
 
 let cube1 = new Instance(cubeModel, new Transform(1, [0, 0, 0], [-1.5, 0, 7]));
 let cube3 = new Instance(cubeModel, new Transform(1, [0, 0, 0], [-1.5, 0, -7]));
 let cube2 = new Instance(cubeModel, new Transform(1, [45, 45, 45], [1.5, 0, 10]));
 
-let scene = [cube1, cube2];
+let triangle1 = new Instance(triangleModel, new Transform(1, [0,0,0], [-1.5, 0, 7]));
+
+let scene = [cube1, cube2, cube3];
 let s2 = Math.sqrt(2);
 let planeNear = new Plane([0, 0, 1], -projection_plane_d);
 let planeLeft = new Plane([s2, 0, s2], 0);
@@ -155,7 +168,7 @@ let clippingPlanes = [planeNear, planeLeft, planeRight, planeTop, planeBottom];
 
 
 renderScene();
-
+// drawFilledTriangle(new Point(100, 100, 1), new Point(200, 0, 1), new Point(200, 200, 1), red);
 
 updateCanvas();
 
@@ -456,6 +469,10 @@ function renderTriangle(triangle) {
                           projectVertex(triangle[1]),
                           projectVertex(triangle[2]),
                           triangle[3]);
+    // drawWireFrameTriangle(projectVertex(triangle[0]),
+    //                         projectVertex(triangle[1]),
+    //                         projectVertex(triangle[2]),
+    //                         green);
 }
 
 // need to add z point here... that way it can be used by interpolation in drawFilledTriangle
@@ -487,12 +504,18 @@ function drawFilledTriangle (p0, p1, p2, color) {
     // compute the x coordinates and h values of the triangle edges.
     let x01 = interpolate(p0.y, p0.x, p1.y, p1.x);//xvalues for p0-p1 // ditch h, get z for these values
     let h01 = interpolate(p0.y, p0.z, p1.y, p1.z);//hvalues for p0-p1
+    // console.log("x01:", x01); // should be constant
+    // console.log("h01:", h01) // should be constant
 
     let x12 = interpolate(p1.y, p1.x, p2.y, p2.x);//xvalues for p1-p2
     let h12 = interpolate(p1.y, p1.z, p2.y, p2.z);//h-values for p1-p2
+    // console.log("x12:", x12); // not constant
+    // console.log("h12:", h12) // should be constant
 
     let x02 = interpolate(p0.y, p0.x, p2.y, p2.x);//xvalues for p0-p2 (long edge)
     let h02 = interpolate(p0.y, p0.z, p2.y, p2.z);//hvalues for p0-p2
+    // console.log("x02:", x02); // not
+    // console.log("h02:", h02) // should be constant
     
     // concatenate the short sides.
     x01.pop();
@@ -519,17 +542,24 @@ function drawFilledTriangle (p0, p1, p2, color) {
     }
     
     // compute h value and draw pixel on line between xl and xr.
+    // console.log(x_left);
     for (let y = p0.y; y <= p2.y; y++) {
-        let xl = x_left[y - p0.y] | 0;
-        let xr = x_right[y - p0.y] | 0;
-        let z_segment = interpolate(xl, h_left[y - p0.y], xr, h_right[y - p0.y]);
+        let xl = x_left[y - p0.y | 0];
+        let xr = x_right[y - p0.y | 0];
+        let z_segment = interpolate(xl, h_left[y - p0.y | 0], xr, h_right[y - p0.y | 0]);
+        
     
         for (var x = xl; x <= xr; x++) {
             // this line originally should reference the h_segment. see previous chapter code
-            let z = z_segment[x-xl];
+            let z = z_segment[x-xl | 0];
             let xCanvas = width/2 + (x | 0);
+            
             let yCanvas = height/2 - (y | 0) - 1;
-            if (z < depthBuffer[xCanvas][yCanvas]) {
+
+            // there was a bug here where it was acessing out of bounds indeces to the debthBuffer.
+            // would be better to handle this in my calculations or maybe its a clipping issue so time is not spent checking conditionals here.
+            if (xCanvas >= 0 && yCanvas >= 0 && xCanvas < depthBuffer.length && yCanvas < depthBuffer[xCanvas].length && z < depthBuffer[xCanvas][yCanvas]) {
+
                 // now we must assign colors at the triangle level to actually test that this is working.
                 putPixel(x, y, color);
                 // now to define and initialize depth buffer... 
@@ -599,7 +629,7 @@ function interpolate(i0, d0, i1, d1) {
         values.push(d);
         d += a;
       }
-    
+
       return values;
     }
 
@@ -712,7 +742,7 @@ function matMult(m1, m2) {
 }
 
 function computeCamMovement(angle) {
-    let theta = angle * Math.PI / 180.0;;
+    let theta = angle * Math.PI / 180.0;
     let zMovement = Math.cos(theta);
     let xMovement = Math.sin(theta);
     return [zMovement, xMovement];
