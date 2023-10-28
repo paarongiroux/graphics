@@ -195,7 +195,7 @@ function Plane(normal, d, name) {
 
 function initializeDepthBuffer() {
     for (let i = 0; i < width; i++) {
-        let tempArray = Array(height).fill(Infinity);
+        let tempArray = Array(height).fill(0);
         depthBuffer[i] = tempArray;
     }
 }
@@ -479,13 +479,13 @@ function drawFilledTriangle (p0, p1, p2, color) {
     // this means h01 is a mapping of z values corresponding to the points along the x01 line.
     // compute the x coordinates and h values of the triangle edges.
     let x01 = interpolate(p0.y, p0.x, p1.y, p1.x);//xvalues for p0-p1 // ditch h, get z for these values
-    let h01 = interpolate(p0.y, p0.z, p1.y, p1.z);//hvalues for p0-p1
+    let h01 = interpolate(p0.y, 1/p0.z, p1.y, 1/p1.z);//hvalues for p0-p1
 
     let x12 = interpolate(p1.y, p1.x, p2.y, p2.x);//xvalues for p1-p2
-    let h12 = interpolate(p1.y, p1.z, p2.y, p2.z);//h-values for p1-p2
+    let h12 = interpolate(p1.y, 1/p1.z, p2.y, 1/p2.z);//h-values for p1-p2
 
     let x02 = interpolate(p0.y, p0.x, p2.y, p2.x);//xvalues for p0-p2 (long edge)
-    let h02 = interpolate(p0.y, p0.z, p2.y, p2.z);//hvalues for p0-p2
+    let h02 = interpolate(p0.y, 1/p0.z, p2.y, 1/p2.z);//hvalues for p0-p2
     
     // concatenate the short sides.
     x01.pop();
@@ -527,7 +527,7 @@ function drawFilledTriangle (p0, p1, p2, color) {
 
             // there was a bug here where it was acessing out of bounds indeces to the debthBuffer.
             // would be better to handle this in my calculations or maybe its a clipping issue so time is not spent checking conditionals here.
-            if (xCanvas >= 0 && yCanvas >= 0 && xCanvas < depthBuffer.length && yCanvas < depthBuffer[xCanvas].length && z < depthBuffer[xCanvas][yCanvas]) {
+            if (xCanvas >= 0 && yCanvas >= 0 && xCanvas < depthBuffer.length && yCanvas < depthBuffer[xCanvas].length && z > depthBuffer[xCanvas][yCanvas]) {
 
                 // now we must assign colors at the triangle level to actually test that this is working.
                 putPixel(x, y, color);
