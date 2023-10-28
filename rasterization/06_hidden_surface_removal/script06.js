@@ -150,25 +150,24 @@ let cubeModel = new Model(cubeVertices, cubeTriangles);
 let triangleModel = new Model(triangleVertices, triangleTriangles);
 
 let cube1 = new Instance(cubeModel, new Transform(1, [0, 0, 0], [-1.5, 0, 7]));
-let cube3 = new Instance(cubeModel, new Transform(1, [0, 0, 0], [-1.5, 0, -7]));
 let cube2 = new Instance(cubeModel, new Transform(1, [45, 45, 45], [1.5, 0, 10]));
+let cube3 = new Instance(cubeModel, new Transform(1, [0, 0, 0], [-1.5, 0, -7]));
 
 let triangle1 = new Instance(triangleModel, new Transform(1, [0,0,0], [-1.5, 0, 7]));
 
 let scene = [cube1, cube2, cube3];
 let s2 = Math.sqrt(2);
-let planeNear = new Plane([0, 0, 1], -projection_plane_d);
-let planeLeft = new Plane([s2, 0, s2], 0);
-let planeRight = new Plane([-s2, 0, s2], 0);
-let planeTop = new Plane([0, -s2, s2], 0);
-let planeBottom = new Plane([0, s2, s2], 0);
+let planeNear = new Plane([0, 0, 1], -projection_plane_d, "NEAR");
+let planeLeft = new Plane([s2, 0, s2], 0, "LEFT");
+let planeRight = new Plane([-s2, 0, s2], 0, "RIGHT");
+let planeTop = new Plane([0, -s2, s2], 0, "TOP");
+let planeBottom = new Plane([0, s2, s2], 0, "BOTTOM");
 
 let clippingPlanes = [planeNear, planeLeft, planeRight, planeTop, planeBottom];
 
 
 
 renderScene();
-// drawFilledTriangle(new Point(100, 100, 1), new Point(200, 0, 1), new Point(200, 200, 1), red);
 
 updateCanvas();
 
@@ -188,9 +187,10 @@ function Transform(scale, rotation, position) {
     this.position = position;
 }
 
-function Plane(normal, d) {
+function Plane(normal, d, name) {
     this.normal = normal;
     this.d = d;
+    this.name = name;
 }
 
 function initializeDepthBuffer() {
@@ -202,7 +202,6 @@ function initializeDepthBuffer() {
 
 
 function clipInstance(instance, planes) {
-    console.log("START CLIPPING NEW INSTANCE");
     let realTrianglesInstance = new Model(instance.vertices, instance.triangles);
     let triangles = createRealTrianglesList(instance);
     realTrianglesInstance.triangles = triangles;
@@ -223,21 +222,17 @@ function clipInstanceAgainstPlane(instance, plane) {
     let radius = boundingSphere[1];
     // radius should not be 51.3
     if (distance > radius) {
-        console.log("accept whole object");
         return instance; // accepted
     } else if (distance < -radius) {
-        console.log("reject whole object"); // i guess this is somehow a problem.
         return null; // rejected
     } else { // instance intersects the plane.
         let clippedInstance = new Model(instance.vertices, instance.triangles);
-        console.log("clip triangles");
         // need to figure out how to handle this data... fix the rendering pipeline...
 
         // i see, so we call this function 5 times per instance... cant
         // create a helper function to map out the triangles here
         // let triangles = createRealTrianglesList(instance);
         clippedInstance.triangles = clipTrianglesAgainstPlane(clippedInstance.triangles, plane);
-        console.log(clippedInstance.triangles.length);
         return clippedInstance;
     }
 
@@ -256,7 +251,6 @@ function clipTrianglesAgainstPlane(triangles, plane) {
 }
 
 function clipTriangle(triangle, plane) {
-    console.log("clipping new triange");
     // i think the best thing to do here is make a helper function to split
     // d0,d1,d2 into two lists. positive and negative.
     // this will help out with the conditionals below.
@@ -283,24 +277,14 @@ function clipTriangle(triangle, plane) {
         neg.push(triangle[2]);
     }
     if (pos.length == 3) {
-        console.log("keep original triangle");
         return [triangle];
     } else if (neg.length == 3) {
-        console.log("reject entire triangle");
-        return []; // is this the right thing to do here? I don't think so.
-        // maybe better to return null and then add a null check in clipTrainglesAgainstPlane.
-        // this is actually correct because this function will return a list with 0 to 2 triangles.
+        return [];
     } else if (pos.length == 1) {
-        console.log("clip triangle into one triangle");
-        // how to handle this data so that i can get the point coresponding with the distance.... oh just push point and not the distance.
-
-        // another problem... as of now this triangle will contain a mapping to the vertices, not the actual vertices themselves.....
-        // i.e a triangle might be [0,1,2] signifying vertexes 0, 1 and 2 instead of holding the actual value of these vertices.
         let a = pos[0];
         let b = neg[0];
         let c = neg[1];
 
-        // add plane intersection function here.
         let bPrime = computeLinePlaneIntersection(plane, a, b);
         let cPrime = computeLinePlaneIntersection(plane, a, c);
 
@@ -308,16 +292,13 @@ function clipTriangle(triangle, plane) {
 
         return [triangle1];
     } else if (pos.length == 2) {
-        console.log("clip triangle into two triangles");
-        console.log("pos: ",pos);
-        console.log("neg: ",neg);
         let c = neg[0];
         let a = pos[0];
         let b = pos[1];
 
         let aPrime = computeLinePlaneIntersection(plane, a, c);
         let bPrime = computeLinePlaneIntersection(plane, b, c);
-        let triangle1 = [a, b, aPrime, triangle[3]];// triangle 3 color
+        let triangle1 = [a, b, aPrime, triangle[3]];
         let triangle2 = [aPrime, b, bPrime, triangle[3]];
 
         return [triangle1, triangle2];
@@ -325,7 +306,6 @@ function clipTriangle(triangle, plane) {
 }
 
 function computeLinePlaneIntersection(plane, a, b) {
-    console.log(plane, a, b);
     let n = plane.normal;
     let t = (-plane.d - dotProduct(n,a)) / dotProduct(n, subtract(b,a));
     let intersection = add(a, applyScale(subtract(b,a), t));
@@ -340,7 +320,7 @@ function createRealTrianglesList(instance) {
     let triangles = instance.triangles;
 
     for (let i = 0; i < triangles.length; i ++ ) {
-        let triangle = [vertices[triangles[i][0]], vertices[triangles[i][1]], vertices[triangles[i][2]], triangles[i][3]]; // will this have a problem with previous clipping? i dont think so.
+        let triangle = [vertices[triangles[i][0]], vertices[triangles[i][1]], vertices[triangles[i][2]], triangles[i][3]]; 
         realTriangles.push(triangle);
     }
     return realTriangles;
@@ -363,7 +343,6 @@ function computeBoundingSphere(instance) {
     // radius is furthest distance..
     //
 
-    // problem with this is that this should occur after model translations and camera translations have happened and rotations
     let xAvg = 0;
     let yAvg = 0;
     let zAvg = 0;
@@ -377,7 +356,7 @@ function computeBoundingSphere(instance) {
     }
 
     xAvg = xAvg / count;
-    yavg = yAvg / count;
+    yAvg = yAvg / count;
     zAvg = zAvg / count;
     let center = [xAvg, yAvg , zAvg];
     
@@ -393,6 +372,7 @@ function computeBoundingSphere(instance) {
             distance = tempDistance;
         }
     }
+
 
     return [center, distance];
 
@@ -469,10 +449,6 @@ function renderTriangle(triangle) {
                           projectVertex(triangle[1]),
                           projectVertex(triangle[2]),
                           triangle[3]);
-    // drawWireFrameTriangle(projectVertex(triangle[0]),
-    //                         projectVertex(triangle[1]),
-    //                         projectVertex(triangle[2]),
-    //                         green);
 }
 
 // need to add z point here... that way it can be used by interpolation in drawFilledTriangle
@@ -504,18 +480,12 @@ function drawFilledTriangle (p0, p1, p2, color) {
     // compute the x coordinates and h values of the triangle edges.
     let x01 = interpolate(p0.y, p0.x, p1.y, p1.x);//xvalues for p0-p1 // ditch h, get z for these values
     let h01 = interpolate(p0.y, p0.z, p1.y, p1.z);//hvalues for p0-p1
-    // console.log("x01:", x01); // should be constant
-    // console.log("h01:", h01) // should be constant
 
     let x12 = interpolate(p1.y, p1.x, p2.y, p2.x);//xvalues for p1-p2
     let h12 = interpolate(p1.y, p1.z, p2.y, p2.z);//h-values for p1-p2
-    // console.log("x12:", x12); // not constant
-    // console.log("h12:", h12) // should be constant
 
     let x02 = interpolate(p0.y, p0.x, p2.y, p2.x);//xvalues for p0-p2 (long edge)
     let h02 = interpolate(p0.y, p0.z, p2.y, p2.z);//hvalues for p0-p2
-    // console.log("x02:", x02); // not
-    // console.log("h02:", h02) // should be constant
     
     // concatenate the short sides.
     x01.pop();
@@ -542,7 +512,6 @@ function drawFilledTriangle (p0, p1, p2, color) {
     }
     
     // compute h value and draw pixel on line between xl and xr.
-    // console.log(x_left);
     for (let y = p0.y; y <= p2.y; y++) {
         let xl = x_left[y - p0.y | 0];
         let xr = x_right[y - p0.y | 0];
